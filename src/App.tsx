@@ -52,7 +52,7 @@ function App() {
       <h2>🔒 Locker</h2>
 
       <input
-        placeholder="e.g. facebook.com"
+        placeholder="e.g. www.facebook.com"
         value={domain}
         onChange={(e) => setDomain(e.target.value)}
         style={{ width: "100%", marginBottom: 10 }}
