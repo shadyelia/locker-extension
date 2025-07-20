@@ -1,69 +1,65 @@
-# React + TypeScript + Vite
+# 🔒 Locker - Website Lock Extension
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Locker** is an open-source Chrome extension built using **React** and **TypeScript** that helps you **temporarily block distracting websites** like YouTube, Twitch, etc.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## ✨ Features
 
-## Expanding the ESLint configuration
+- ⏱️ Lock websites for a specific duration (e.g. 15 minutes, 1 hour, until a certain date).
+- 📆 Automatically unlocks when time expires.
+- ✅ Works with or without "[www](http://www)." prefixes (e.g., `www.twitch.tv`, `twitch.tv`, etc.)
+- 💡 Built with React and TypeScript using Vite.
+- 🔐 Local state is persisted using `chrome.storage.local`.
+- 🚫 Redirects blocked domains to a friendly `block.html` page.
+- 💻 Modern and polished UI.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+---
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## 🧠 How It Works
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+1. The extension injects a **content script** that monitors the current domain.
+2. If the domain is locked, the browser is redirected to a `block.html` page.
+3. Timers are managed using `chrome.storage.local` and background events.
+4. You can add and remove locks using the React popup UI.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+---
+
+## 📦 Installation
+
+### 🧪 For Development:
+
+```bash
+# Clone the repo
+$ git clone https://github.com/yourusername/locker.git
+$ cd locker
+
+# Install dependencies
+$ npm install
+
+# Start development server
+$ npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 🔧 Load into Chrome:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+1. Run `npm run build`
+2. Go to `chrome://extensions/`
+3. Enable **Developer Mode**
+4. Click **Load Unpacked**
+5. Select the `dist` folder
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Now the extension is active and ready to use 🚀
+
+
+---
+
+## 🚀 Build for Production
+
+```bash
+npm run build
 ```
+
+This generates the extension bundle in the `dist/` directory.
+
+
