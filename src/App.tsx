@@ -1,93 +1,92 @@
 import { useEffect, useState } from "react";
-
+import "./App.css";
+import type { LockedSite } from "./types/LockedSite";
 
 const STORAGE_KEY = "lockedSites";
 
-function App() {
-  const [domain, setDomain] = useState("");
-  const [minutes, setMinutes] = useState(60);
-  const [lockedSites, setLockedSites] = useState<Record<string, number>>({});
+export default function App() {
+  const [lockedSites, setLockedSites] = useState<Record<string, LockedSite>>(
+    {}
+  );
+  const [newUrl, setNewUrl] = useState("");
+  const [minutes, setMinutes] = useState(1);
 
   useEffect(() => {
-    chrome.storage.local.get([STORAGE_KEY], (result) => {
-      setLockedSites(result[STORAGE_KEY] || {});
-    });
+    const interval = setInterval(() => {
+      chrome.storage.local.get([STORAGE_KEY], (result) => {
+        const sites = result[STORAGE_KEY] || {};
+        const now = Date.now();
+        const updatedSites: Record<string, LockedSite> = {};
+
+        Object.entries(sites).forEach(([url, data]) => {
+          const site = data as LockedSite;
+          if (site.until > now) {
+            updatedSites[url] = site;
+          }
+        });
+
+        setLockedSites(updatedSites);
+        chrome.storage.local.set({ [STORAGE_KEY]: updatedSites });
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
   }, []);
 
-  const saveLockedSites = (sites: Record<string, number>) => {
-    chrome.storage.local.set({ [STORAGE_KEY]: sites });
-    setLockedSites(sites);
-  };
+  const handleAddSite = () => {
+    if (!newUrl) return;
 
-  const handleLock = () => {
-    if (!domain) return;
-
-    const unlockTime = Date.now() + minutes * 60_000;
+    const until = Date.now() + minutes * 60 * 1000;
     const updated = {
       ...lockedSites,
-      [domain]: unlockTime,
+      [newUrl]: { url: newUrl, until },
     };
 
-    saveLockedSites(updated);
-    setDomain("");
-    setMinutes(60);
+    setLockedSites(updated);
+    chrome.storage.local.set({ [STORAGE_KEY]: updated });
+
+    setNewUrl("");
   };
 
-  const getRemainingTime = (unlockTime: number) => {
-    const remaining = unlockTime - Date.now();
-    if (remaining <= 0) return "Unlocked";
-    const minutes = Math.floor(remaining / 60000);
-    const seconds = Math.floor((remaining % 60000) / 1000);
-    return `${minutes}m ${seconds}s`;
-  };
-
-  const handleUnlock = (site: string) => {
-    const updated = { ...lockedSites };
-    delete updated[site];
-    saveLockedSites(updated);
+  const formatCountdown = (ms: number) => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return `${mins}m ${secs}s`;
   };
 
   return (
-    <div style={{ padding: 20, fontFamily: "Arial" }}>
-      <h2>🔒 Locker</h2>
+    <div className="app-container">
+      <h2>🔒 Site Locker</h2>
 
-      <input
-        placeholder="e.g. www.facebook.com"
-        value={domain}
-        onChange={(e) => setDomain(e.target.value)}
-        style={{ width: "100%", marginBottom: 10 }}
-      />
+      <div className="form-section">
+        <input
+          type="text"
+          placeholder="Enter site URL"
+          value={newUrl}
+          onChange={(e) => setNewUrl(e.target.value)}
+        />
+        <input
+          type="number"
+          value={minutes}
+          onChange={(e) => setMinutes(Number(e.target.value))}
+          min={1}
+        />
+        <button onClick={handleAddSite}>Lock</button>
+      </div>
 
-      <input
-        type="number"
-        min={1}
-        value={minutes}
-        onChange={(e) => setMinutes(Number(e.target.value))}
-        style={{ width: "100%", marginBottom: 10 }}
-      />
-
-      <button onClick={handleLock} style={{ width: "100%" }}>
-        Lock for {minutes} minutes
-      </button>
-
-      <h3 style={{ marginTop: 30 }}>Locked Sites</h3>
-      <ul>
-        {Object.entries(lockedSites).map(([site, unlockTime]) => (
-          <li key={site} style={{ marginBottom: 10 }}>
-            <strong>{site}</strong> — {getRemainingTime(unlockTime)}
-            {Date.now() < unlockTime && (
-              <button
-                style={{ marginLeft: 10 }}
-                onClick={() => handleUnlock(site)}
-              >
-                Unlock
-              </button>
-            )}
-          </li>
-        ))}
-      </ul>
+      <div className="locked-list">
+        <h3>Locked Sites</h3>
+        {Object.entries(lockedSites).length === 0 && <p>No locked sites.</p>}
+        <ul>
+          {Object.entries(lockedSites).map(([url, { until }]) => (
+            <li key={url}>
+              <strong>{url}</strong>
+              <div>⏱ {formatCountdown(until - Date.now())}</div>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
-
-export default App;
