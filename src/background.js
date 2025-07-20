@@ -1,21 +1,18 @@
-const STORAGE_KEY = 'lockedSites';
+import { STORAGE_KEY } from "./shared/constants/storageConstants";
+import { normalizeUrl } from "./shared/services/urlService";
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (changeInfo.status !== 'complete' || !tab.url) return;
+  if (changeInfo.status !== "complete" || !tab.url) return;
 
-  const url = new URL(tab.url);
-  const domain = url.hostname;
+  const currentHostname = normalizeUrl(tab.url);
 
-  chrome.storage.local.get(['lockedSites'], (result) => {
+  chrome.storage.local.get([STORAGE_KEY], (result) => {
     const lockedSites = result.lockedSites || {};
-    const unlockTime = lockedSites[domain];
-    const isLocked = unlockTime && Date.now() < unlockTime;
 
-    if (isLocked) {
+    if (lockedSites[currentHostname]) {
       chrome.tabs.update(tabId, {
-        url: chrome.runtime.getURL('blocked.html'),
+        url: chrome.runtime.getURL("blocked.html"),
       });
     }
   });
 });
-

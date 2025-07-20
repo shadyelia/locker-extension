@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 import "./App.css";
-import type { LockedSite } from "./types/LockedSite";
-
-const STORAGE_KEY = "lockedSites";
+import { STORAGE_KEY } from "./shared/constants/storageConstants";
+import type { LockedSite } from "./shared/types/lockedSite";
+import { normalizeUrl } from "./shared/services/urlService";
 
 export default function App() {
   const [lockedSites, setLockedSites] = useState<Record<string, LockedSite>>(
     {}
   );
   const [newUrl, setNewUrl] = useState("");
-  const [minutes, setMinutes] = useState(1);
+  const [minutes, setMinutes] = useState(30);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -35,11 +35,12 @@ export default function App() {
 
   const handleAddSite = () => {
     if (!newUrl) return;
+    const normalized = normalizeUrl(newUrl);
 
     const until = Date.now() + minutes * 60 * 1000;
     const updated = {
       ...lockedSites,
-      [newUrl]: { url: newUrl, until },
+      [normalized]: { url: normalized, until },
     };
 
     setLockedSites(updated);
@@ -90,3 +91,4 @@ export default function App() {
     </div>
   );
 }
+
