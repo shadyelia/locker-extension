@@ -1,94 +1,134 @@
-import { useEffect, useState } from "react";
-import "./App.css";
-import { STORAGE_KEY } from "./shared/constants/storageConstants";
-import type { LockedSite } from "./shared/types/lockedSite";
+import React, { useEffect, useState } from "react";
+import {
+  Box,
+  TextField,
+  Button,
+  List,
+  ListItem,
+  ListItemText,
+  IconButton,
+  Typography,
+} from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
+import LockIcon from "@mui/icons-material/Lock";
 import { normalizeUrl } from "./shared/services/urlService";
+import type { LockedSite } from "./shared/types/lockedSite";
 
-export default function App() {
+const STORAGE_KEY = "lockedSites";
+
+const App: React.FC = () => {
+  const [inputUrl, setInputUrl] = useState("");
+  const [durationMinutes, setDurationMinutes] = useState("5");
   const [lockedSites, setLockedSites] = useState<Record<string, LockedSite>>(
     {}
   );
-  const [newUrl, setNewUrl] = useState("");
-  const [minutes, setMinutes] = useState(30);
+  const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      chrome.storage.local.get([STORAGE_KEY], (result) => {
-        const sites = result[STORAGE_KEY] || {};
-        const now = Date.now();
-        const updatedSites: Record<string, LockedSite> = {};
+    chrome.storage.local.get([STORAGE_KEY], (result) => {
+      setLockedSites(result[STORAGE_KEY] || {});
+    });
 
-        Object.entries(sites).forEach(([url, data]) => {
-          const site = data as LockedSite;
-          if (site.until > now) {
-            updatedSites[url] = site;
-          }
-        });
-
-        setLockedSites(updatedSites);
-        chrome.storage.local.set({ [STORAGE_KEY]: updatedSites });
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
   }, []);
 
-  const handleAddSite = () => {
-    if (!newUrl) return;
-    const normalized = normalizeUrl(newUrl);
+  const handleAdd = () => {
+    const normalized = normalizeUrl(inputUrl);
+    if (!normalized) return;
 
-    const until = Date.now() + minutes * 60 * 1000;
-    const updated = {
-      ...lockedSites,
-      [normalized]: { url: normalized, until },
+    const durationMs = parseInt(durationMinutes, 10) * 60 * 1000;
+
+    const newSite: LockedSite = {
+      url: normalized,
+      expiresAt: Date.now() + durationMs,
     };
 
-    setLockedSites(updated);
-    chrome.storage.local.set({ [STORAGE_KEY]: updated });
-
-    setNewUrl("");
+    const updated = { ...lockedSites, [normalized]: newSite };
+    chrome.storage.local.set({ [STORAGE_KEY]: updated }, () => {
+      setLockedSites(updated);
+      setInputUrl("");
+    });
   };
 
-  const formatCountdown = (ms: number) => {
-    const totalSeconds = Math.floor(ms / 1000);
-    const mins = Math.floor(totalSeconds / 60);
-    const secs = totalSeconds % 60;
-    return `${mins}m ${secs}s`;
+  const handleDelete = (url: string) => {
+    const updated = { ...lockedSites };
+    delete updated[url];
+    chrome.storage.local.set({ [STORAGE_KEY]: updated }, () => {
+      setLockedSites(updated);
+    });
   };
+
+  useEffect(() => {
+    const updated = { ...lockedSites };
+    let changed = false;
+
+    Object.entries(lockedSites).forEach(([url, { expiresAt }]) => {
+      if (expiresAt <= now) {
+        delete updated[url];
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      chrome.storage.local.set({ [STORAGE_KEY]: updated }, () => {
+        setLockedSites(updated);
+      });
+    }
+  }, [now, lockedSites]);
 
   return (
-    <div className="app-container">
-      <h2>🔒 Site Locker</h2>
+    <Box p={2} width={300}>
+      <Typography variant="h6" fontWeight="bold" gutterBottom>
+        <LockIcon sx={{ verticalAlign: "middle", mr: 1 }} />
+        Site Locker
+      </Typography>
 
-      <div className="form-section">
-        <input
-          type="text"
-          placeholder="Enter site URL"
-          value={newUrl}
-          onChange={(e) => setNewUrl(e.target.value)}
+      <Box display="flex" flexDirection="column" gap={1} mb={2}>
+        <TextField
+          label="Enter website"
+          variant="outlined"
+          size="small"
+          fullWidth
+          value={inputUrl}
+          onChange={(e) => setInputUrl(e.target.value)}
         />
-        <input
+        <TextField
+          label="Duration (minutes)"
+          variant="outlined"
+          size="small"
           type="number"
-          value={minutes}
-          onChange={(e) => setMinutes(Number(e.target.value))}
-          min={1}
+          value={durationMinutes}
+          onChange={(e) => setDurationMinutes(e.target.value)}
         />
-        <button onClick={handleAddSite}>Lock</button>
-      </div>
+        <Button variant="contained" onClick={handleAdd}>
+          Add
+        </Button>
+      </Box>
 
-      <div className="locked-list">
-        <h3>Locked Sites</h3>
-        {Object.entries(lockedSites).length === 0 && <p>No locked sites.</p>}
-        <ul>
-          {Object.entries(lockedSites).map(([url, { until }]) => (
-            <li key={url}>
-              <strong>{url}</strong>
-              <div>⏱ {formatCountdown(until - Date.now())}</div>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
+      <List dense>
+        {Object.values(lockedSites).map(({ url, expiresAt }) => {
+          const secondsLeft = Math.max(0, Math.floor((expiresAt - now) / 1000));
+
+          return (
+            <ListItem
+              key={url}
+              secondaryAction={
+                <IconButton edge="end" onClick={() => handleDelete(url)}>
+                  <DeleteIcon />
+                </IconButton>
+              }
+            >
+              <ListItemText
+                primary={url}
+                secondary={`Locked for ${secondsLeft}s`}
+              />
+            </ListItem>
+          );
+        })}
+      </List>
+    </Box>
   );
-}
+};
 
+export default App;
