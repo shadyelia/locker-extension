@@ -8,11 +8,24 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
   chrome.storage.local.get([STORAGE_KEY], (result) => {
     const lockedSites = result.lockedSites || {};
+    const site = lockedSites[currentHostname];
 
-    if (lockedSites[currentHostname]) {
-      chrome.tabs.update(tabId, {
-        url: chrome.runtime.getURL("blocked.html"),
-      });
+    if (!site) return;
+
+    // null = permanent block (never expires)
+    const isExpired = site.expiresAt !== null && site.expiresAt <= Date.now();
+
+    if (isExpired) {
+      // Clean up expired entry
+      const updated = { ...lockedSites };
+      delete updated[currentHostname];
+      chrome.storage.local.set({ [STORAGE_KEY]: updated });
+      return;
     }
+
+    chrome.tabs.update(tabId, {
+      url: chrome.runtime.getURL("blocked.html"),
+    });
   });
 });
+

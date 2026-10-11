@@ -1,11 +1,13 @@
 {
   "name": "locker-extension",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:watch": "vite build --watch",
+    "watch": "vite build --watch",
     "lint": "eslint .",
     "preview": "vite preview"
   },
